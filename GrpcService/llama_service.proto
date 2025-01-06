@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+service LlamaService {
+    rpc GenerateText (TextRequest) returns (TextResponse);
+}
+
+message TextRequest {
+    string prompt = 1;
+}
+
+message TextResponse {
+    string generated_text = 1;
+}
