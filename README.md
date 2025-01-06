@@ -1,6 +1,7 @@
 # Llama 3.2 3B Instruct Integration with C#
 
-This project demonstrates how to integrate **Meta's Llama 3.2 3B Instruct** model into a C# application using a Python gRPC server as the backend. The goal is to leverage AI to generate as much of the solution code as possible, showcasing the capabilities of large language models in real-world applications.
+This project demonstrates how to integrate **Meta's Llama 3.2 3B Instruct** model into a C# application using a Python gRPC server as the backend.
+The goal is to leverage AI to generate as much of the solution code as possible, showcasing the capabilities of large language models in real-world applications.
 
 ## Table of Contents
 1. [Overview](#overview)
@@ -28,7 +29,7 @@ The objective is to use AI to write as much of the solution code as possible, de
 ## Prerequisites
 
 ### Python Server Backend
-- Python 3.8 or higher
+- Python 3.12 (see environment.yml)
 - GPU with CUDA support (recommended for faster inference)
 - Hugging Face `transformers` library
 - gRPC and `grpcio-tools` libraries
