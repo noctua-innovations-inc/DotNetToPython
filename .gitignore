@@ -361,3 +361,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/LlamaServer/llama_service_pb2.py
+/LlamaServer/llama_service_pb2_grpc.py
