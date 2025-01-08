@@ -15,6 +15,11 @@ using MqMessaging.Infrastructure.RabbitMq;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var logger = builder.StartupLogger<Program>();
+
+// Log a message before building the application
+logger.LogInformation("Starting Blazor Server application setup...");
+
 // Add service defaults & Aspire components.
 builder.AddServiceDefaults();
 
@@ -42,7 +47,7 @@ builder.Services.AddGrpcChannel(builder.Configuration);
 builder.Services.AddGrpcProtocolToChannel<LlamaService.LlamaServiceClient>();
  */
 
-await builder.Services.AddRabbitMqEventBus(builder.Configuration);
+await builder.Services.AddRabbitMqEventBus(builder.Configuration, logger);
 
 builder.Services.AddTransient<IPromptProcessor, PromptProcessor>();
 

@@ -1,9 +1,5 @@
 ﻿using BlazorServerFrontend.Infrastructure.Abstractions;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.AspNetCore.Connections;
-using Microsoft.JSInterop;
-using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.ComponentModel;
 using System.Text;
@@ -28,13 +24,14 @@ public partial class Index
     [Inject]
     public required IPromptProcessor PromptProcessor { get; set; }
 
-    #endregion
+    #endregion --[ Injection ]--
 
-    #region --[ Properties ]-- 
+    #region --[ Properties ]--
 
     private string Prompt { get; set; } = string.Empty;
 
     private string _generatedText = string.Empty;
+
     public string GeneratedText
     {
         get => _generatedText;
@@ -49,6 +46,7 @@ public partial class Index
     }
 
     private bool _isProcessing = false;
+
     public bool IsProcessing
     {
         get => _isProcessing;
@@ -63,6 +61,7 @@ public partial class Index
     }
 
     public event PropertyChangedEventHandler PropertyChanged;
+
     private void OnPropertyChanged(string propertyName)
     {
         var updateView = () =>
@@ -83,7 +82,7 @@ public partial class Index
         }
     }
 
-    #endregion
+    #endregion --[ Properties ]--
 
     #region --[ Overrides ]--
 
@@ -96,7 +95,7 @@ public partial class Index
         await base.OnAfterRenderAsync(firstRender);
     }
 
-    #endregion
+    #endregion --[ Overrides ]--
 
     private async Task SubmitPrompt()
     {

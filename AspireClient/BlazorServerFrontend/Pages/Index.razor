@@ -1,6 +1,6 @@
 ﻿@page "/"
 
-<div class="container">
+<div class="container @(IsProcessing ? "cursor-wait" : "cursor-default")">
     <h3>Llama 3.2 3B Instruct Demo</h3>
 
     <textarea @bind="Prompt" placeholder="Enter your prompt here" class="form-control"></textarea>
@@ -8,11 +8,11 @@
     <button @onclick="SubmitPrompt" disabled="@IsProcessing" class="btn btn-primary mt-3">
         @if (IsProcessing)
         {
-            <span>Processing...</span>
+            <span>Processing Prompt...</span>
         }
         else
         {
-            <span>Generate</span>
+            <span>Submit Prompt</span>
         }
     </button>
 

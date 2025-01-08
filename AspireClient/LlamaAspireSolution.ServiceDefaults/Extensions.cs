@@ -14,6 +14,20 @@ namespace Microsoft.Extensions.Hosting;
 // To learn more about using this project, see https://aka.ms/dotnet/aspire/service-defaults
 public static class Extensions
 {
+    public static ILogger<T> StartupLogger<T>(this IHostApplicationBuilder builder)
+    {
+        // Create a logger factory manually
+        var loggerFactory = LoggerFactory.Create(loggingBuilder =>
+        {
+            loggingBuilder.AddConfiguration(builder.Configuration.GetSection("Logging")); // Use configuration
+            loggingBuilder.AddConsole(); // Add console logging
+            loggingBuilder.AddDebug();   // Add debug logging
+        });
+
+        // Create a logger instance
+        return loggerFactory.CreateLogger<T>();
+    }
+
     public static IHostApplicationBuilder AddServiceDefaults(this IHostApplicationBuilder builder)
     {
         builder.ConfigureOpenTelemetry();

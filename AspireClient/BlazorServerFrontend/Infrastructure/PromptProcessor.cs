@@ -1,7 +1,6 @@
 ﻿using BlazorServerFrontend.Infrastructure.Abstractions;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using System.Data.Common;
 using System.Text;
 
 namespace BlazorServerFrontend.Services;
@@ -18,14 +17,19 @@ public class PromptProcessor(IConnection _mqConnection) : IDisposable, IPromptPr
     {
         if (handlers.ContainsKey(asyncEventHandler))
         {
+            // The event handler has already been registered,
+            // but was it registered to the specified queue?
             if (handlers[asyncEventHandler].ContainsKey(queue))
             {
-                // Nothing to do, event handler already subscribed to queue
+                // Yes, the event handler has already been registered with the specified queue.
+                // Nothing left to do.
                 return;
             }
         }
         else
         {
+            // The event handler has not been registered,
+            // so allocate an entry for the registration.
             handlers[asyncEventHandler] = [];
         }
 
@@ -69,7 +73,6 @@ public class PromptProcessor(IConnection _mqConnection) : IDisposable, IPromptPr
         {
         }
     }
-
 
     public async Task SendRequestAsync(string prompt, string queue = "frontend_to_backend")
     {
