@@ -31,6 +31,24 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LlamaAspireSolution.Service
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GrpcMessaging", "AspireClient\Components\GrpcMessaging\GrpcMessaging.csproj", "{C3FFD06D-BF02-49FD-B0B9-056A2802DB15}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Search Engine", "Search Engine", "{F688AFA5-2D6F-459E-9CAA-D799832F9312}"
+	ProjectSection(SolutionItems) = preProject
+		searxng-docker\.env = searxng-docker\.env
+		searxng-docker\.gitignore = searxng-docker\.gitignore
+		searxng-docker\Caddyfile = searxng-docker\Caddyfile
+		searxng-docker\docker-compose.yaml = searxng-docker\docker-compose.yaml
+		searxng-docker\LICENSE = searxng-docker\LICENSE
+		searxng-docker\README.md = searxng-docker\README.md
+		searxng-docker\searxng-docker.service.template = searxng-docker\searxng-docker.service.template
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "searxng", "searxng", "{C11183C2-4651-4E89-B768-603E7E32A445}"
+	ProjectSection(SolutionItems) = preProject
+		searxng-docker\searxng\limiter.toml = searxng-docker\searxng\limiter.toml
+		searxng-docker\searxng\settings.yml = searxng-docker\searxng\settings.yml
+		searxng-docker\searxng\uwsgi.ini = searxng-docker\searxng\uwsgi.ini
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -80,5 +98,6 @@ Global
 		{F0F89ABB-CBFE-47F2-B2A8-099649E65FD3} = {8090D29A-E107-482E-975F-C86813F82EA4}
 		{83CC0471-DBA6-49E2-977C-6CA5B0B8C4FF} = {8090D29A-E107-482E-975F-C86813F82EA4}
 		{C3FFD06D-BF02-49FD-B0B9-056A2802DB15} = {ED16527D-3B69-4F38-88B9-C153D0C85B7C}
+		{C11183C2-4651-4E89-B768-603E7E32A445} = {F688AFA5-2D6F-459E-9CAA-D799832F9312}
 	EndGlobalSection
 EndGlobal

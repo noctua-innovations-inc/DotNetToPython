@@ -5,7 +5,7 @@
 
     <textarea @bind="Prompt" placeholder="Enter your prompt here" class="form-control"></textarea>
 
-    <button @onclick="GenerateText" disabled="@IsProcessing" class="btn btn-primary mt-3">
+    <button @onclick="SubmitPrompt" disabled="@IsProcessing" class="btn btn-primary mt-3">
         @if (IsProcessing)
         {
             <span>Processing...</span>

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿using BlazorServerFrontend.Infrastructure.Abstractions;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.JSInterop;
@@ -25,7 +26,7 @@ public partial class Index
     */
 
     [Inject]
-    public required IConnection MqConnection { get; set; }
+    public required IPromptProcessor PromptProcessor { get; set; }
 
     #endregion
 
@@ -90,14 +91,14 @@ public partial class Index
     {
         if (firstRender)
         {
-            await ConfigureReceiver();
+            await PromptProcessor.RegisterEventHandlerAsync(DataReceivedHandler);
         }
         await base.OnAfterRenderAsync(firstRender);
     }
 
     #endregion
 
-    private async Task GenerateText()
+    private async Task SubmitPrompt()
     {
         if (string.IsNullOrWhiteSpace(Prompt) || IsProcessing)
             return;
@@ -121,57 +122,17 @@ public partial class Index
         }
         await Task.CompletedTask;
         */
-        await SendRequest();
+        await PromptProcessor.SendRequestAsync(Prompt);
     }
 
-
-    private async Task SendRequest()
+    private Task DataReceivedHandler(object channel, BasicDeliverEventArgs @event)
     {
-        using var channel = await MqConnection.CreateChannelAsync();
+        var body = @event.Body.ToArray();
+        var message = Encoding.UTF8.GetString(body);
 
-        await channel.QueueDeclareAsync(
-            queue: "frontend_to_backend",
-            durable: false,
-            exclusive: false,
-            autoDelete: false,
-            arguments: null);
+        GeneratedText = message;
+        IsProcessing = false;
 
-        ReadOnlyMemory<byte> body = Encoding.UTF8.GetBytes(Prompt);
-
-        await channel.BasicPublishAsync(
-            exchange: "",
-            routingKey: "frontend_to_backend",
-            mandatory: false,
-            body: body);
-    }
-
-    private async Task ConfigureReceiver()
-    {
-        /* using */ var channel = await MqConnection.CreateChannelAsync();
-
-        await channel.QueueDeclareAsync(
-            queue: "backend_to_frontend",
-            durable: false,
-            exclusive: false,
-            autoDelete: false,
-            arguments: null);
-
-        var consumer = new AsyncEventingBasicConsumer(channel);
-
-        consumer.ReceivedAsync += (model, ea) =>
-        {
-            var body = ea.Body.ToArray();
-            var message = Encoding.UTF8.GetString(body);
-
-            GeneratedText = message;
-            IsProcessing = false;
-
-            return Task.CompletedTask;
-        };
-
-        await channel.BasicConsumeAsync(
-            queue: "backend_to_frontend",
-            autoAck: true,
-            consumer: consumer);
+        return Task.CompletedTask;
     }
 }
