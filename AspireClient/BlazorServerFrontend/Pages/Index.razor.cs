@@ -24,6 +24,9 @@ public partial class Index
     public required LlamaService.LlamaServiceClient LlamaServiceClient { get; set; }
     */
 
+    [Inject]
+    public required IConnection MqConnection { get; set; }
+
     #endregion
 
     #region --[ Properties ]-- 
@@ -61,16 +64,22 @@ public partial class Index
     public event PropertyChangedEventHandler PropertyChanged;
     private void OnPropertyChanged(string propertyName)
     {
-        // Notify Blazor UI of the change
-        Task.Run(async () =>
+        var updateView = () =>
         {
-            // Ensure execution on UI thread
-            await InvokeAsync(() =>
-            {
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-                StateHasChanged();
-            });
-        });
+            // Notify Blazor UI of property value changes.
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            StateHasChanged();
+        };
+
+        // Ensure execution on UI thread
+        if (SynchronizationContext.Current != null)
+        {
+            updateView();
+        }
+        else
+        {
+            Task.Run(async () => await InvokeAsync(updateView));
+        }
     }
 
     #endregion
@@ -81,7 +90,7 @@ public partial class Index
     {
         if (firstRender)
         {
-            ConfigureReceiver();
+            await ConfigureReceiver();
         }
         await base.OnAfterRenderAsync(firstRender);
     }
@@ -94,90 +103,73 @@ public partial class Index
             return;
 
         IsProcessing = true;
+        /*
+         *GHOSTED CODE: This gRPC implementation is no longer in use but is kept for reference.
+         * It was replaced with a message queue pattern due to timeout issues and the need for
+         * better support for Retrieval-Augmented Generation (RAG) workflows.
+         *
+         * Original gRPC implementation:
+         *//*
         try
         {
-            /*
-             *GHOSTED CODE: This gRPC implementation is no longer in use but is kept for reference.
-             * It was replaced with a message queue pattern due to timeout issues and the need for
-             * better support for Retrieval-Augmented Generation (RAG) workflows.
-             *
-             * Original gRPC implementation:
-             *//*
             var reply = await LlamaServiceClient.GenerateTextAsync(new TextRequest { Prompt = Prompt });
             GeneratedText = reply.GeneratedText;
-            */
-
-            SendRequest();
         }
         finally
         {
             IsProcessing = false;
         }
         await Task.CompletedTask;
+        */
+        await SendRequest();
     }
 
 
-    private void SendRequest()
+    private async Task SendRequest()
     {
-        var factory = new ConnectionFactory()
-        {
-            HostName = "localhost",
-            Port = 5672,
-            UserName = "dev_user",
-            Password = "dev_password"
-        };
+        using var channel = await MqConnection.CreateChannelAsync();
 
-        using var connection = factory.CreateConnection();
-
-        using var channel = connection.CreateModel();
-
-        channel.QueueDeclare(
+        await channel.QueueDeclareAsync(
             queue: "frontend_to_backend",
             durable: false,
             exclusive: false,
             autoDelete: false,
             arguments: null);
 
-        var body = Encoding.UTF8.GetBytes(Prompt);
+        ReadOnlyMemory<byte> body = Encoding.UTF8.GetBytes(Prompt);
 
-        channel.BasicPublish(
+        await channel.BasicPublishAsync(
             exchange: "",
             routingKey: "frontend_to_backend",
-            basicProperties: null,
+            mandatory: false,
             body: body);
     }
 
-    private void ConfigureReceiver()
+    private async Task ConfigureReceiver()
     {
-        var factory = new ConnectionFactory()
-        {
-            HostName = "localhost",
-            Port = 5672,
-            UserName = "dev_user",
-            Password = "dev_password"
-        };
+        /* using */ var channel = await MqConnection.CreateChannelAsync();
 
-        /* using */
-            var connection = factory.CreateConnection();
-        /* using */ var channel = connection.CreateModel();
-
-        channel.QueueDeclare(
+        await channel.QueueDeclareAsync(
             queue: "backend_to_frontend",
             durable: false,
             exclusive: false,
             autoDelete: false,
             arguments: null);
 
-        var consumer = new EventingBasicConsumer(channel);
-        consumer.Received += (model, ea) =>
+        var consumer = new AsyncEventingBasicConsumer(channel);
+
+        consumer.ReceivedAsync += (model, ea) =>
         {
             var body = ea.Body.ToArray();
             var message = Encoding.UTF8.GetString(body);
 
             GeneratedText = message;
+            IsProcessing = false;
+
+            return Task.CompletedTask;
         };
 
-        channel.BasicConsume(
+        await channel.BasicConsumeAsync(
             queue: "backend_to_frontend",
             autoAck: true,
             consumer: consumer);
