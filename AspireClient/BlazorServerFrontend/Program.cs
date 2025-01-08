@@ -9,6 +9,10 @@ using Grpc.Net.Client;
 using GrpcMessaging.Infrastructure.Grpc;
  */
 
+using BlazorServerFrontend.Infrastructure.Abstractions;
+using BlazorServerFrontend.Services;
+using MqMessaging.Infrastructure.RabbitMq;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add service defaults & Aspire components.
@@ -37,6 +41,10 @@ builder.Services.AddServerSideBlazor();
 builder.Services.AddGrpcChannel(builder.Configuration);
 builder.Services.AddGrpcProtocolToChannel<LlamaService.LlamaServiceClient>();
  */
+
+await builder.Services.AddRabbitMqEventBus(builder.Configuration);
+
+builder.Services.AddTransient<IPromptProcessor, PromptProcessor>();
 
 var app = builder.Build();
 

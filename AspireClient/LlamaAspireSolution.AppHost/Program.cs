@@ -16,7 +16,8 @@ var rabbitMq = builder
     .WithEnvironment("RABBITMQ_DEFAULT_PASS", "dev_password");  // Custom password
 
 // Add the Blazor Server front-end
-var blazorFrontend = builder.AddProject<Projects.BlazorServerFrontend>("blazor-frontend")
+var blazorFrontend = builder
+    .AddProject<Projects.BlazorServerFrontend>("blazor-frontend")
     .WithReference(rabbitMq);
 
 builder

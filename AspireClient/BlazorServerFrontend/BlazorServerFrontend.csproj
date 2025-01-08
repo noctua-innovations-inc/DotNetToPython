@@ -8,11 +8,12 @@
 
   <ItemGroup>
     <PackageReference Include="Grpc.Net.ClientFactory" Version="2.67.0" />
-    <PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
+    <PackageReference Include="RabbitMQ.Client" Version="7.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Components\GrpcMessaging\GrpcMessaging.csproj" />
+    <ProjectReference Include="..\Components\MqMessaging\MqMessaging.csproj" />
     <ProjectReference Include="..\LlamaAspireSolution.ServiceDefaults\LlamaAspireSolution.ServiceDefaults.csproj" />
     <ProjectReference Include="..\Protocols\LlamaGrpcProtocol\LlamaGrpcProtocol.csproj" />
   </ItemGroup>

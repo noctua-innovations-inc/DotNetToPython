@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿using BlazorServerFrontend.Infrastructure.Abstractions;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.JSInterop;
@@ -23,6 +24,9 @@ public partial class Index
     [Inject]
     public required LlamaService.LlamaServiceClient LlamaServiceClient { get; set; }
     */
+
+    [Inject]
+    public required IPromptProcessor PromptProcessor { get; set; }
 
     #endregion
 
@@ -61,16 +65,22 @@ public partial class Index
     public event PropertyChangedEventHandler PropertyChanged;
     private void OnPropertyChanged(string propertyName)
     {
-        // Notify Blazor UI of the change
-        Task.Run(async () =>
+        var updateView = () =>
         {
-            // Ensure execution on UI thread
-            await InvokeAsync(() =>
-            {
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-                StateHasChanged();
-            });
-        });
+            // Notify Blazor UI of property value changes.
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            StateHasChanged();
+        };
+
+        // Ensure execution on UI thread
+        if (SynchronizationContext.Current != null)
+        {
+            updateView();
+        }
+        else
+        {
+            Task.Run(async () => await InvokeAsync(updateView));
+        }
     }
 
     #endregion
@@ -81,105 +91,48 @@ public partial class Index
     {
         if (firstRender)
         {
-            ConfigureReceiver();
+            await PromptProcessor.RegisterEventHandlerAsync(DataReceivedHandler);
         }
         await base.OnAfterRenderAsync(firstRender);
     }
 
     #endregion
 
-    private async Task GenerateText()
+    private async Task SubmitPrompt()
     {
         if (string.IsNullOrWhiteSpace(Prompt) || IsProcessing)
             return;
 
         IsProcessing = true;
+        /*
+         *GHOSTED CODE: This gRPC implementation is no longer in use but is kept for reference.
+         * It was replaced with a message queue pattern due to timeout issues and the need for
+         * better support for Retrieval-Augmented Generation (RAG) workflows.
+         *
+         * Original gRPC implementation:
+         *//*
         try
         {
-            /*
-             *GHOSTED CODE: This gRPC implementation is no longer in use but is kept for reference.
-             * It was replaced with a message queue pattern due to timeout issues and the need for
-             * better support for Retrieval-Augmented Generation (RAG) workflows.
-             *
-             * Original gRPC implementation:
-             *//*
             var reply = await LlamaServiceClient.GenerateTextAsync(new TextRequest { Prompt = Prompt });
             GeneratedText = reply.GeneratedText;
-            */
-
-            SendRequest();
         }
         finally
         {
             IsProcessing = false;
         }
         await Task.CompletedTask;
+        */
+        await PromptProcessor.SendRequestAsync(Prompt);
     }
 
-
-    private void SendRequest()
+    private Task DataReceivedHandler(object channel, BasicDeliverEventArgs @event)
     {
-        var factory = new ConnectionFactory()
-        {
-            HostName = "localhost",
-            Port = 5672,
-            UserName = "dev_user",
-            Password = "dev_password"
-        };
+        var body = @event.Body.ToArray();
+        var message = Encoding.UTF8.GetString(body);
 
-        using var connection = factory.CreateConnection();
+        GeneratedText = message;
+        IsProcessing = false;
 
-        using var channel = connection.CreateModel();
-
-        channel.QueueDeclare(
-            queue: "frontend_to_backend",
-            durable: false,
-            exclusive: false,
-            autoDelete: false,
-            arguments: null);
-
-        var body = Encoding.UTF8.GetBytes(Prompt);
-
-        channel.BasicPublish(
-            exchange: "",
-            routingKey: "frontend_to_backend",
-            basicProperties: null,
-            body: body);
-    }
-
-    private void ConfigureReceiver()
-    {
-        var factory = new ConnectionFactory()
-        {
-            HostName = "localhost",
-            Port = 5672,
-            UserName = "dev_user",
-            Password = "dev_password"
-        };
-
-        /* using */
-            var connection = factory.CreateConnection();
-        /* using */ var channel = connection.CreateModel();
-
-        channel.QueueDeclare(
-            queue: "backend_to_frontend",
-            durable: false,
-            exclusive: false,
-            autoDelete: false,
-            arguments: null);
-
-        var consumer = new EventingBasicConsumer(channel);
-        consumer.Received += (model, ea) =>
-        {
-            var body = ea.Body.ToArray();
-            var message = Encoding.UTF8.GetString(body);
-
-            GeneratedText = message;
-        };
-
-        channel.BasicConsume(
-            queue: "backend_to_frontend",
-            autoAck: true,
-            consumer: consumer);
+        return Task.CompletedTask;
     }
 }
