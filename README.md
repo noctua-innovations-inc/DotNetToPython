@@ -1,6 +1,6 @@
 # Llama 3.2 3B Instruct Integration with C#
 
-This project demonstrates how to integrate **Meta's Llama 3.2 3B Instruct** model into a C# application using a Python gRPC server as the backend. The goal is to leverage AI to generate as much of the solution code as possible, showcasing the capabilities of large language models in real-world applications.
+This project demonstrates how to integrate **Meta's Llama 3.2 3B Instruct** model into a C# application using a Python server as the backend. The goal is to leverage AI to generate as much of the solution code as possible, showcasing the capabilities of large language models in real-world applications.
 
 ## Table of Contents
 1. [Overview](#overview)
@@ -17,11 +17,11 @@ This project demonstrates how to integrate **Meta's Llama 3.2 3B Instruct** mode
 
 The project consists of two main components:
 1. **Python Server Backend**:
-   - A RabbitMQ server that hosts the **Llama 3.2 3B Instruct** model.
-   - The server receives text prompts from the C# client, generates responses using the model, and returns the results.
+   - A Python server that hosts the **Llama 3.2 3B Instruct** model.
+   - The server receives text prompts from the C# client, generates responses using the model, and returns the results using a Message Queue Pattern for client-server communications.
 
 2. **C# Console Frontend**:
-   - A console application that interacts with the Python RabbitMQ server.
+   - A Microsoft Aspire Blazor Server web application that interacts with the Python backend server.
    - Users can input prompts, and the application displays the AI-generated responses.
 
 The objective is to use AI to write as much of the solution code as possible, demonstrating the power of large language models in automating development tasks.
@@ -92,16 +92,16 @@ This project is licensed under the MIT License. See the [LICENSE.txt](LICENSE.tx
 
 Here are some screenshots of the project in action:
 
-![Screenshot 1](aspire_client_startup.png)  
 *Aspire Client Startup*
+![Screenshot 1](aspire_client_startup.png)  
 
-![Screenshot 2](aspire_client_orchestrator.png)  
 *Aspire Client Orchestrator*
+![Screenshot 2](aspire_client_orchestrator.png)  
 
-![Screenshot 3](python_backend.png)  
 *Python Backend Server*
+![Screenshot 3](python_backend.png)  
 
-![Screenshot 4](aspire_client_frontend.png)  
 *Aspire Blazor Server Client Frontend*
+![Screenshot 4](aspire_client_frontend.png)  
 
 ---
