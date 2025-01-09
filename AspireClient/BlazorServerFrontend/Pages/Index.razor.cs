@@ -97,6 +97,8 @@ public partial class Index
 
     #endregion --[ Overrides ]--
 
+    #region --[ Webpage Concerns ]--
+
     private async Task SubmitPrompt()
     {
         if (string.IsNullOrWhiteSpace(Prompt) || IsProcessing)
@@ -134,4 +136,6 @@ public partial class Index
 
         return Task.CompletedTask;
     }
+
+    #endregion
 }

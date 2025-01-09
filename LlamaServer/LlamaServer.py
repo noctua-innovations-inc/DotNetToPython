@@ -1,3 +1,11 @@
+################################################################################
+#
+# Initial gRPC server implementation.
+# Depreciated in favour of a Message Queue Pattern approach.
+# Please use prompt_processor.py as your startup project.
+#
+################################################################################
+
 import grpc
 from concurrent import futures
 import llama_service_pb2
