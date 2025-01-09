@@ -16,6 +16,8 @@ namespace BlazorServerFrontend.Infrastructure;
 /// </summary>
 public class PromptProcessor(IConnection _mqConnection, ILogger<PromptProcessor> _logger) : IDisposable, IPromptProcessor
 {
+    private readonly string _clientId = Guid.NewGuid().ToString("N");
+
     private bool disposedValue;
 
     /// <summary>
@@ -97,25 +99,22 @@ public class PromptProcessor(IConnection _mqConnection, ILogger<PromptProcessor>
     /// </summary>
     /// <param name="asyncEventHandler">The event handler to register.</param>
     /// <param name="queue">The name of the queue to consume messages from. Defaults to "backend_to_frontend".</param>
-    public async Task RegisterEventHandlerAsync(AsyncEventHandler<BasicDeliverEventArgs> asyncEventHandler, string queue = "backend_to_frontend")
+    public async Task RegisterEventHandlerAsync(AsyncEventHandler<BasicDeliverEventArgs> asyncEventHandler)
     {
-        if (asyncEventHandler == null)
-        {
-            throw new ArgumentNullException(nameof(asyncEventHandler));
-        }
+        ArgumentNullException.ThrowIfNull(asyncEventHandler);
 
         // Use thread-safe operations to add the event handler.
         var handlerSubscriptions = handlers.GetOrAdd(asyncEventHandler, _ => new ConcurrentDictionary<string, Subscription>());
 
-        if (handlerSubscriptions.ContainsKey(queue))
+        if (handlerSubscriptions.ContainsKey(_clientId))
         {
-            _logger.LogDebug("Event handler is already registered for queue: {queue}.", queue);
+            _logger.LogDebug("Event handler is already registered for queue: {queue}.", _clientId);
             return;
         }
 
         // Create a RabbitMQ channel and declare the queue.
         var channel = await CreateChannelAsync();
-        await DeclareQueueWithRetryAsync(channel, queue);
+        await DeclareQueueWithRetryAsync(channel, _clientId);
 
         await retryPolicy.ExecuteAsync(async () =>
         {
@@ -125,19 +124,19 @@ public class PromptProcessor(IConnection _mqConnection, ILogger<PromptProcessor>
             try
             {
                 await channel.BasicConsumeAsync(
-                    queue: queue,
+                    queue: _clientId,
                     autoAck: true,
                     consumer: consumer);
-                _logger.LogDebug("Successfully subscribed to queue: {queue}.", queue);
+                _logger.LogDebug("Successfully subscribed to queue: {queue}.", _clientId);
             }
             catch (Exception ex)
             {
-                _logger.LogCritical("Could not subscribe to queue {queue} due to exception: {message}", queue, ex.ToString());
+                _logger.LogCritical("Could not subscribe to queue {queue} due to exception: {message}", _clientId, ex.ToString());
                 throw;
             }
 
             // Add the subscription atomically.
-            handlerSubscriptions[queue] = new Subscription(channel, consumer);
+            handlerSubscriptions[_clientId] = new Subscription(channel, consumer);
         });
     }
 
@@ -147,12 +146,9 @@ public class PromptProcessor(IConnection _mqConnection, ILogger<PromptProcessor>
     /// </summary>
     /// <param name="asyncEventHandler">The event handler to unregister.</param>
     /// <param name="queue">The name of the queue to stop consuming messages from. Defaults to "backend_to_frontend".</param>
-    public async Task UnRegisterEventHandlerAsync(AsyncEventHandler<BasicDeliverEventArgs> asyncEventHandler, string queue = "backend_to_frontend")
+    public async Task UnRegisterEventHandlerAsync(AsyncEventHandler<BasicDeliverEventArgs> asyncEventHandler)
     {
-        if (asyncEventHandler == null)
-        {
-            throw new ArgumentNullException(nameof(asyncEventHandler));
-        }
+        ArgumentNullException.ThrowIfNull(asyncEventHandler);
 
         await retryPolicy.ExecuteAsync(async () =>
         {
@@ -162,14 +158,14 @@ public class PromptProcessor(IConnection _mqConnection, ILogger<PromptProcessor>
                 _logger.LogDebug("Event handler is not registered for any queue.");
                 return;
             }
-            if (!value.TryGetValue(queue, out var entry))
+            if (!value.TryGetValue(_clientId, out var entry))
             {
-                _logger.LogDebug("Event handler is not registered for queue: {queue}.", queue);
+                _logger.LogDebug("Event handler is not registered for queue: {queue}.", _clientId);
                 return;
             }
 
             // Remove the subscription from the handlers dictionary.
-            value.Remove(queue, out var _);
+            value.Remove(_clientId, out var _);
             if (value.IsEmpty)
             {
                 handlers.Remove(asyncEventHandler, out var _);
@@ -178,7 +174,7 @@ public class PromptProcessor(IConnection _mqConnection, ILogger<PromptProcessor>
             // Unsubscribe the event handler and dispose of the channel.
             entry.Consumer.ReceivedAsync -= asyncEventHandler;
             await entry.Channel.DisposeAsync();
-            _logger.LogDebug("Successfully unregistered event handler for queue: {queue}.", queue);
+            _logger.LogDebug("Successfully unregistered event handler for queue: {queue}.", _clientId);
         });
     }
 
@@ -191,7 +187,14 @@ public class PromptProcessor(IConnection _mqConnection, ILogger<PromptProcessor>
     {
         // Create a RabbitMQ channel and declare the queue.
         using var channel = await CreateChannelAsync();
+
         await DeclareQueueWithRetryAsync(channel, queue);
+
+        var messageProperties = new BasicProperties()
+        {
+            CorrelationId = Guid.NewGuid().ToString("N"),
+            ReplyTo = _clientId
+        };
 
         // Convert the prompt message to a byte array.
         var body = Encoding.UTF8.GetBytes(prompt);
@@ -204,6 +207,7 @@ public class PromptProcessor(IConnection _mqConnection, ILogger<PromptProcessor>
                 await channel.BasicPublishAsync(
                     exchange: "",
                     routingKey: queue,
+                    basicProperties: messageProperties,
                     mandatory: false,
                     body: body);
                 _logger.LogDebug("Successfully published message to queue: {queue}.", queue);
