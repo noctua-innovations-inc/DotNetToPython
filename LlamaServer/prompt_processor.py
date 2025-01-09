@@ -1,20 +1,27 @@
-################################################################################
-#
-# Initial gRPC server implementation.
-# Depreciated in favour of a Message Queue Pattern approach.
-# Please use prompt_processor.py as your startup project.
-#
-################################################################################
+import pika
+import logging
+import sys
+import os
 
-import grpc
-from concurrent import futures
-import llama_service_pb2
-import llama_service_pb2_grpc
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import torch
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-class LlamaService(llama_service_pb2_grpc.LlamaServiceServicer):
+# Configuration
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")             # RabbitMQ server host
+RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", 5672))               # RabbitMQ server port
+RABBITMQ_USER = os.getenv("RABBITMQ_USER", "dev_user")              # RabbitMQ username
+RABBITMQ_PASSWORD = os.getenv("RABBITMQ_PASSWORD", "dev_password")  # RabbitMQ password
+FRONTEND_TO_BACKEND_QUEUE = "frontend_to_backend"
+BACKEND_TO_FRONTEND_QUEUE = "backend_to_frontend"
+
+logging.info(f"RabbitMQ Host: {RABBITMQ_HOST}")
+
+
+class LlamaService():
+
     def __init__(self):
         # Load the pre-trained Llama 3.2 3B Instruct model using Hugging Face's AutoModelForCausalLM.
         # This model is designed for causal language modeling tasks (e.g., text generation).
@@ -29,10 +36,7 @@ class LlamaService(llama_service_pb2_grpc.LlamaServiceServicer):
         self.tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-3B-Instruct")
 
 
-    def GenerateText(self, request, context):
-
-        # Extract the prompt from the gRPC request.
-        prompt = request.prompt
+    def GenerateText(self, prompt):
 
         # Tokenize the input prompt using the tokenizer.
         # This converts the text into a format that the model can understand (e.g., token IDs).
@@ -66,33 +70,83 @@ class LlamaService(llama_service_pb2_grpc.LlamaServiceServicer):
             generated_text = generated_text[len(prompt):].strip()
 
         # Return the generated text as a gRPC response.
-        return llama_service_pb2.TextResponse(generated_text=generated_text)
+        #return llama_service_pb2.TextResponse(generated_text=generated_text)
+
+        return generated_text
+
+llama_service = LlamaService()
+
+def process_prompt(prompt):
+    """
+    Process the prompt and generate a reply.
+    """
+
+    logging.info(f"Processing prompt: {prompt}")
+
+    return llama_service.GenerateText(prompt);
 
 
-def serve():
-    # Create a gRPC server with a thread pool of 10 worker threads.
-    # The ThreadPoolExecutor allows the server to handle multiple requests concurrently.
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+def setup_rabbitmq_connection():
+    """
+    Set up and return a RabbitMQ connection and channel.
+    """
+    try:
+        credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASSWORD)
+        connection = pika.BlockingConnection(
+            pika.ConnectionParameters(
+                host=RABBITMQ_HOST,
+                port=RABBITMQ_PORT,
+                credentials=credentials,
+            )
+        )
+        channel = connection.channel()
+        channel.queue_declare(queue=FRONTEND_TO_BACKEND_QUEUE, durable=False)
+        channel.queue_declare(queue=BACKEND_TO_FRONTEND_QUEUE, durable=False)
+        logging.info("RabbitMQ connection and queues set up successfully.")
+        return connection, channel
+    except pika.exceptions.AMQPError as e:
+        logging.error(f"Failed to set up RabbitMQ connection: {e}")
+        sys.exit(1)
 
-    # Register the LlamaService implementation with the gRPC server.
-    # LlamaService() is an instance of the service implementation, and `add_LlamaServiceServicer_to_server`
-    # binds the service methods defined in the protobuf file to the server.
-    llama_service_pb2_grpc.add_LlamaServiceServicer_to_server(LlamaService(), server)
+def callback(ch, method, properties, body):
+    """
+    Callback function to process incoming messages.
+    """
+    try:
+        prompt = body.decode("utf-8")
+        reply = process_prompt(prompt)
+        ch.basic_publish(
+            exchange="",
+            routing_key=BACKEND_TO_FRONTEND_QUEUE,
+            body=reply.encode("utf-8"),
+            properties=pika.BasicProperties(delivery_mode=2)  # Make messages persistent
+        )
+        logging.info(f"Processed and replied to prompt: {prompt}")
+    except Exception as e:
+        logging.error(f"Error processing message: {e}")
 
-    # Bind the server to a specific port (50051) on all available network interfaces ('[::]').
-    # The server will listen for incoming gRPC requests on this port.
-    # The port is marked as "insecure" because it does not use SSL/TLS encryption.
-    server.add_insecure_port('[::]:50051')
+def start_consumer():
+    """
+    Start the RabbitMQ consumer.
+    """
+    connection, channel = setup_rabbitmq_connection()
+    try:
+        channel.basic_consume(
+            queue=FRONTEND_TO_BACKEND_QUEUE,
+            on_message_callback=callback,
+            auto_ack=True,
+        )
+        logging.info("Waiting for messages. To exit, press CTRL+C")
+        channel.start_consuming()
+    except KeyboardInterrupt:
+        logging.info("Consumer interrupted by user. Shutting down gracefully...")
+    except Exception as e:
+        logging.error(f"Error in consumer: {e}")
+    finally:
+        if connection and connection.is_open:
+            connection.close()
+            logging.info("RabbitMQ connection closed.")
 
-    # Start the gRPC server.
-    # This begins listening for incoming requests and processing them using the registered service.
-    server.start()
-
-    # Block the main thread until the server is terminated (e.g., via Ctrl+C or a shutdown signal).
-    # This ensures the server remains running and continues to handle requests.
-    server.wait_for_termination()
-
-
-if __name__ == '__main__':
-    serve()
+if __name__ == "__main__":
+    start_consumer()
 

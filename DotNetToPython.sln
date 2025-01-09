@@ -9,8 +9,45 @@ Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "LlamaServer", "LlamaServer\
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{9A238CF9-13A7-4535-8024-F58683F1A275}"
 	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
 		LICENSE.txt = LICENSE.txt
 		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AspireClient", "AspireClient", "{8090D29A-E107-482E-975F-C86813F82EA4}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Components", "Components", "{ED16527D-3B69-4F38-88B9-C153D0C85B7C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Protocols", "Protocols", "{9593DC55-BA4A-4BD3-8FC5-3ADC348B016D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MqMessaging", "AspireClient\Components\MqMessaging\MqMessaging.csproj", "{48572D08-6D8A-4E45-A361-1AF9293CE658}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LlamaGrpcProtocol", "AspireClient\Protocols\LlamaGrpcProtocol\LlamaGrpcProtocol.csproj", "{AC6AB69D-13D7-4952-9EE8-0819BD9AA426}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorServerFrontend", "AspireClient\BlazorServerFrontend\BlazorServerFrontend.csproj", "{CAA211D8-CF75-4BAE-A41E-56F168823C84}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LlamaAspireSolution.AppHost", "AspireClient\LlamaAspireSolution.AppHost\LlamaAspireSolution.AppHost.csproj", "{F0F89ABB-CBFE-47F2-B2A8-099649E65FD3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LlamaAspireSolution.ServiceDefaults", "AspireClient\LlamaAspireSolution.ServiceDefaults\LlamaAspireSolution.ServiceDefaults.csproj", "{83CC0471-DBA6-49E2-977C-6CA5B0B8C4FF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GrpcMessaging", "AspireClient\Components\GrpcMessaging\GrpcMessaging.csproj", "{C3FFD06D-BF02-49FD-B0B9-056A2802DB15}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Search Engine", "Search Engine", "{F688AFA5-2D6F-459E-9CAA-D799832F9312}"
+	ProjectSection(SolutionItems) = preProject
+		searxng-docker\.env = searxng-docker\.env
+		searxng-docker\.gitignore = searxng-docker\.gitignore
+		searxng-docker\Caddyfile = searxng-docker\Caddyfile
+		searxng-docker\docker-compose.yaml = searxng-docker\docker-compose.yaml
+		searxng-docker\LICENSE = searxng-docker\LICENSE
+		searxng-docker\README.md = searxng-docker\README.md
+		searxng-docker\searxng-docker.service.template = searxng-docker\searxng-docker.service.template
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "searxng", "searxng", "{C11183C2-4651-4E89-B768-603E7E32A445}"
+	ProjectSection(SolutionItems) = preProject
+		searxng-docker\searxng\limiter.toml = searxng-docker\searxng\limiter.toml
+		searxng-docker\searxng\settings.yml = searxng-docker\searxng\settings.yml
+		searxng-docker\searxng\uwsgi.ini = searxng-docker\searxng\uwsgi.ini
 	EndProjectSection
 EndProject
 Global
@@ -25,8 +62,43 @@ Global
 		{AA9CEDB8-A28C-45CB-9459-C3E72DA2EABA}.Release|Any CPU.Build.0 = Release|Any CPU
 		{3C4AB4A9-CBEA-4F1E-B38B-49DD2274AB75}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{3C4AB4A9-CBEA-4F1E-B38B-49DD2274AB75}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{48572D08-6D8A-4E45-A361-1AF9293CE658}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{48572D08-6D8A-4E45-A361-1AF9293CE658}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{48572D08-6D8A-4E45-A361-1AF9293CE658}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{48572D08-6D8A-4E45-A361-1AF9293CE658}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AC6AB69D-13D7-4952-9EE8-0819BD9AA426}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AC6AB69D-13D7-4952-9EE8-0819BD9AA426}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AC6AB69D-13D7-4952-9EE8-0819BD9AA426}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AC6AB69D-13D7-4952-9EE8-0819BD9AA426}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CAA211D8-CF75-4BAE-A41E-56F168823C84}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CAA211D8-CF75-4BAE-A41E-56F168823C84}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CAA211D8-CF75-4BAE-A41E-56F168823C84}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CAA211D8-CF75-4BAE-A41E-56F168823C84}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F0F89ABB-CBFE-47F2-B2A8-099649E65FD3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F0F89ABB-CBFE-47F2-B2A8-099649E65FD3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F0F89ABB-CBFE-47F2-B2A8-099649E65FD3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F0F89ABB-CBFE-47F2-B2A8-099649E65FD3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{83CC0471-DBA6-49E2-977C-6CA5B0B8C4FF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{83CC0471-DBA6-49E2-977C-6CA5B0B8C4FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{83CC0471-DBA6-49E2-977C-6CA5B0B8C4FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{83CC0471-DBA6-49E2-977C-6CA5B0B8C4FF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C3FFD06D-BF02-49FD-B0B9-056A2802DB15}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C3FFD06D-BF02-49FD-B0B9-056A2802DB15}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C3FFD06D-BF02-49FD-B0B9-056A2802DB15}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C3FFD06D-BF02-49FD-B0B9-056A2802DB15}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{ED16527D-3B69-4F38-88B9-C153D0C85B7C} = {8090D29A-E107-482E-975F-C86813F82EA4}
+		{9593DC55-BA4A-4BD3-8FC5-3ADC348B016D} = {8090D29A-E107-482E-975F-C86813F82EA4}
+		{48572D08-6D8A-4E45-A361-1AF9293CE658} = {ED16527D-3B69-4F38-88B9-C153D0C85B7C}
+		{AC6AB69D-13D7-4952-9EE8-0819BD9AA426} = {9593DC55-BA4A-4BD3-8FC5-3ADC348B016D}
+		{CAA211D8-CF75-4BAE-A41E-56F168823C84} = {8090D29A-E107-482E-975F-C86813F82EA4}
+		{F0F89ABB-CBFE-47F2-B2A8-099649E65FD3} = {8090D29A-E107-482E-975F-C86813F82EA4}
+		{83CC0471-DBA6-49E2-977C-6CA5B0B8C4FF} = {8090D29A-E107-482E-975F-C86813F82EA4}
+		{C3FFD06D-BF02-49FD-B0B9-056A2802DB15} = {ED16527D-3B69-4F38-88B9-C153D0C85B7C}
+		{C11183C2-4651-4E89-B768-603E7E32A445} = {F688AFA5-2D6F-459E-9CAA-D799832F9312}
 	EndGlobalSection
 EndGlobal
