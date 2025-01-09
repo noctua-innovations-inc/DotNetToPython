@@ -127,7 +127,6 @@ def callback(ch, method, properties, body):
     except Exception as e:
         logging.error(f"Error processing message: {e}")
 
-
 def start_consumer():
     """
     Start the RabbitMQ consumer.
@@ -152,4 +151,3 @@ def start_consumer():
 
 if __name__ == "__main__":
     start_consumer()
-
