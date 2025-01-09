@@ -9,6 +9,7 @@ This project demonstrates how to integrate **Meta's Llama 3.2 3B Instruct** mode
 4. [Contributing](#contributing)
 5. [License](#license)
 6. [Acknowledgments](#acknowledgments)
+7. [Screenshots](#screenshots)
 
 ---
 
@@ -91,16 +92,16 @@ This project is licensed under the MIT License. See the [LICENSE.txt](LICENSE.tx
 
 Here are some screenshots of the project in action:
 
-![Screenshot 1](Aspire Client Startup.png)  
+![Screenshot 1](aspire_client_startup.png)  
 *Aspire Client Startup*
 
-![Screenshot 2](Aspire Client Orchestrator.png)  
+![Screenshot 2](aspire_client_orchestrator.png)  
 *Aspire Client Orchestrator*
 
-![Screenshot 3](Python Backend.png)  
+![Screenshot 3](python_backend.png)  
 *Python Backend Server*
 
-![Screenshot 4](Aspire Client Frontend.png)  
+![Screenshot 4](aspire_client_frontend.png)  
 *Aspire Blazor Server Client Frontend*
 
 ---
