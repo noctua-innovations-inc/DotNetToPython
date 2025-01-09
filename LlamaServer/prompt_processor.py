@@ -15,10 +15,8 @@ RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", 5672))               # RabbitMQ s
 RABBITMQ_USER = os.getenv("RABBITMQ_USER", "dev_user")              # RabbitMQ username
 RABBITMQ_PASSWORD = os.getenv("RABBITMQ_PASSWORD", "dev_password")  # RabbitMQ password
 FRONTEND_TO_BACKEND_QUEUE = "frontend_to_backend"
-BACKEND_TO_FRONTEND_QUEUE = "backend_to_frontend"
 
 logging.info(f"RabbitMQ Host: {RABBITMQ_HOST}")
-
 
 class LlamaService():
 
@@ -69,9 +67,6 @@ class LlamaService():
         if generated_text.startswith(prompt):
             generated_text = generated_text[len(prompt):].strip()
 
-        # Return the generated text as a gRPC response.
-        #return llama_service_pb2.TextResponse(generated_text=generated_text)
-
         return generated_text
 
 llama_service = LlamaService()
@@ -101,8 +96,7 @@ def setup_rabbitmq_connection():
         )
         channel = connection.channel()
         channel.queue_declare(queue=FRONTEND_TO_BACKEND_QUEUE, durable=False)
-        channel.queue_declare(queue=BACKEND_TO_FRONTEND_QUEUE, durable=False)
-        logging.info("RabbitMQ connection and queues set up successfully.")
+        logging.info("RabbitMQ connection and dedicated queue set up successfully.")
         return connection, channel
     except pika.exceptions.AMQPError as e:
         logging.error(f"Failed to set up RabbitMQ connection: {e}")
@@ -115,15 +109,24 @@ def callback(ch, method, properties, body):
     try:
         prompt = body.decode("utf-8")
         reply = process_prompt(prompt)
-        ch.basic_publish(
-            exchange="",
-            routing_key=BACKEND_TO_FRONTEND_QUEUE,
-            body=reply.encode("utf-8"),
-            properties=pika.BasicProperties(delivery_mode=2)  # Make messages persistent
-        )
-        logging.info(f"Processed and replied to prompt: {prompt}")
+
+        # Use the ReplyTo property from the incoming message to send the reply
+        if properties.reply_to:
+            ch.basic_publish(
+                exchange="",
+                routing_key=properties.reply_to,                # Use the ReplyTo queue
+                body=reply.encode("utf-8"),
+                properties=pika.BasicProperties(
+                    correlation_id=properties.correlation_id,   # Include the correlation ID
+                    delivery_mode=1                             # Make messages transient
+                )
+            )
+            logging.info(f"Processed and replied to prompt: {prompt}")
+        else:
+            logging.error("No ReplyTo property found in the incoming message.")
     except Exception as e:
         logging.error(f"Error processing message: {e}")
+
 
 def start_consumer():
     """
