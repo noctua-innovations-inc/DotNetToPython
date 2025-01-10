@@ -58,7 +58,7 @@ public class PromptProcessor(IConnection _mqConnection, ILogger<PromptProcessor>
             }
             catch (Exception ex)
             {
-                _logger.LogCritical("Could not create channel due to exception: {message}", ex.ToString());
+                _logger.LogError("Could not create channel due to exception: {message}", ex.ToString());
                 result?.Dispose(); // Dispose the channel if it was created but an exception occurred.
                 throw;
             }
@@ -87,7 +87,7 @@ public class PromptProcessor(IConnection _mqConnection, ILogger<PromptProcessor>
             }
             catch (Exception ex)
             {
-                _logger.LogCritical("Could not declare queue {queue} due to exception: {message}", queue, ex.ToString());
+                _logger.LogError("Could not declare queue {queue} due to exception: {message}", queue, ex.ToString());
                 throw;
             }
         });
@@ -131,7 +131,7 @@ public class PromptProcessor(IConnection _mqConnection, ILogger<PromptProcessor>
             }
             catch (Exception ex)
             {
-                _logger.LogCritical("Could not subscribe to queue {queue} due to exception: {message}", _clientId, ex.ToString());
+                _logger.LogError("Could not subscribe to queue {queue} due to exception: {message}", _clientId, ex.ToString());
                 throw;
             }
 
@@ -185,6 +185,9 @@ public class PromptProcessor(IConnection _mqConnection, ILogger<PromptProcessor>
     /// <param name="queue">The name of the queue to send the message to. Defaults to "frontend_to_backend".</param>
     public async Task SendRequestAsync(string prompt, string queue = "frontend_to_backend")
     {
+        ArgumentNullException.ThrowIfNull(prompt);
+        ArgumentNullException.ThrowIfNull(queue);
+
         // Create a RabbitMQ channel and declare the queue.
         using var channel = await CreateChannelAsync();
 
@@ -214,7 +217,7 @@ public class PromptProcessor(IConnection _mqConnection, ILogger<PromptProcessor>
             }
             catch (Exception ex)
             {
-                _logger.LogCritical("Could not publish to queue {queue} due to exception: {message}", queue, ex.ToString());
+                _logger.LogError("Could not publish to queue {queue} due to exception: {message}", queue, ex.ToString());
                 throw;
             }
         });
@@ -240,8 +243,17 @@ public class PromptProcessor(IConnection _mqConnection, ILogger<PromptProcessor>
         {
             foreach (var entry in handler.Value)
             {
-                entry.Value.Consumer.ReceivedAsync -= handler.Key;
-                await entry.Value.Channel.DisposeAsync(); // Use DisposeAsync instead of Dispose.
+                var channel = string.Empty;
+                try
+                {
+                    channel = entry.Key;
+                    entry.Value.Consumer.ReceivedAsync -= handler.Key;
+                    await entry.Value.Channel.DisposeAsync(); // Use DisposeAsync instead of Dispose.
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("An error occurred while disposing channel {channel}: {message}", channel, ex.Message);
+                }
             }
             handler.Value.Clear();
         }
