@@ -6,6 +6,7 @@ server:
   image_proxy: true
   allow_all_origins: true
   limiter: false  # can be disabled for a private instance
+  default_format: json
 ui:
   static_use_hash: true
 redis:
@@ -18,15 +19,16 @@ engines:
   - name: qwant
     disabled: false
   - name: google
-    disabled: true
+    disabled: false
   - name: bing
-    disabled: true
+    disabled: false
   - name: twitter
-    disabled: true
+    disabled: false
   - name: youtube
-    disabled: true
+    disabled: false
   - name: reddit
-    disabled: true
-#search:
-#  formats:
-#    - json
+    disabled: false
+search:
+  formats:
+    - html
+    - json
