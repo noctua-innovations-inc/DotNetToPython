@@ -7,8 +7,22 @@ using RabbitMQ.Client;
 
 namespace MqMessaging.Infrastructure.RabbitMq;
 
+/// <summary>
+/// Provides extension methods for setting up RabbitMQ event bus in an <see cref="IServiceCollection"/>.
+/// </summary>
 public static class RabbitMqStartupExtensions
 {
+    /// <summary>
+    /// Adds RabbitMQ event bus services to the specified <see cref="IServiceCollection"/>.
+    /// </summary>
+    /// <param name="services">The <see cref="IServiceCollection"/> to add services to.</param>
+    /// <param name="configuration">The <see cref="IConfiguration"/> containing RabbitMQ connection settings.</param>
+    /// <param name="logger">The <see cref="ILogger"/> used for logging connection attempts and errors.</param>
+    /// <returns>The <see cref="IServiceCollection"/> so that additional calls can be chained.</returns>
+    /// <remarks>
+    /// This method configures and establishes a RabbitMQ connection using a retry policy with exponential backoff.
+    /// The connection is registered as a singleton to ensure it is reused across the application.
+    /// </remarks>
     public static async Task<IServiceCollection> AddRabbitMqEventBus(this IServiceCollection services, IConfiguration configuration, ILogger logger)
     {
         var rabbitMqOptions = new RabbitMqConnectionOptions();
@@ -50,6 +64,15 @@ public static class RabbitMqStartupExtensions
         return services;
     }
 
+    /// <summary>
+    /// Creates an asynchronous retry policy for connecting to RabbitMQ.
+    /// </summary>
+    /// <param name="logger">The <see cref="ILogger"/> used for logging retry attempts.</param>
+    /// <returns>An <see cref="AsyncRetryPolicy{TResult}"/> configured with exponential backoff.</returns>
+    /// <remarks>
+    /// The retry policy handles exceptions during connection attempts and retries up to 5 times with exponential backoff.
+    /// Each retry attempt is logged for monitoring and debugging purposes.
+    /// </remarks>
     private static AsyncRetryPolicy<IConnection> CreateRetryPolicy(ILogger logger)
     {
         return Policy<IConnection>

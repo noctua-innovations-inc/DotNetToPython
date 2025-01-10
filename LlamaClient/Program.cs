@@ -1,6 +1,11 @@
 ﻿using Grpc.Net.Client;
 using System.Text;
 
+/// <summary>
+/// Initial gRPC client implementation.
+/// Depreciated in favour of a webpage user-interface using a Message Queue Pattern approach.
+/// Please use LlamaAspireSolution.AppHost as your startup project.
+/// </summary>
 internal class Program
 {
     private static async Task Main(string[] args)
