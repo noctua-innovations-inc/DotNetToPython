@@ -5,8 +5,9 @@ server:
   secret_key: "7a48232877159e69dc49895b3915333d4afd31d54c0ca95b43208f3287fc4990"  # change this!
   image_proxy: true
   allow_all_origins: true
-  limiter: false  # can be disabled for a private instance
+  limiter: false                # Can be disabled for a private instance
   default_format: json
+  result_count: 48              # Set the global maximum to 48 results
 ui:
   static_use_hash: true
 redis:

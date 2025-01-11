@@ -5,6 +5,7 @@ import os
 import requests
 from bs4 import BeautifulSoup
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from typing import List, NotRequired, TypedDict
 import torch
 
 # Configure logging
@@ -35,50 +36,94 @@ class LlamaService:
         # The tokenizer converts text into tokens (e.g., words or subwords) that the model can process.
         self.tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-3B-Instruct")
 
-    def generate_text(self, prompt, context=""):
+    def format_search_results_for_llama(self, search_results: str) -> str:
+        if not search_results:
+            logging.warnr("No search results found for prompt.")
+            return ""
+        relevant_info = [result.get("content", "") for result in search_results]
+        formatted_text = "\n".join(relevant_info)
+        return f"Actual RealWeb Search Results:\n{formatted_text}\n"
+
+    def create_system_prompt_for_llama(self, query: str, search_results: str) -> str:
+        """
+        create Llama 3.2 3B templated prompt.
+        See also... https://www.llama.com/docs/how-to-guides/prompting/
+        """
+        # Format the prompt using the Llama 3.2 prompt template
+        system_prompt = (
+            "<|start_header_id|>system<|end_header_id|>\n"
+            "You are a helpful and knowledgeable assistant. Your knowledge is based on data available up until October 2022. "
+            "For any information or events that occurred after this date, you will rely on the search results provided below. "
+            "Use the search results to answer the user's query accurately and provide up-to-date information.\n\n"
+            f"**Search Results:**\n{search_results}\n\n"
+            "When responding:\n"
+            "1. If the user's query relates to events or information after October 2022, prioritize the search results.\n"
+            "2. If the search results are insufficient or irrelevant, inform the user that you cannot provide an answer based on the available information.\n"
+            "3. Always cite the search results when using them to answer the user's query.\n"
+            "<|eot_id|>\n"
+            f"<|start_header_id|>user<|end_header_id|>\n"
+            f"{query}\n"
+            "<|eot_id|>\n"
+            "<|start_header_id|>assistant<|end_header_id|>"
+        )
+
+        return system_prompt
+
+    def format_output_from_llama(self, llama_output: str) -> str:
+        # Remove the final `<|end_of_text|>` token if present
+        eot_token = "<|end_of_text|>"
+        if llama_output.endswith(eot_token):
+            llama_output = llama_output[:-len(eot_token)].strip()
+
+        # Extract the assistant's response from the generated text
+        assistant_keyword = "<|start_header_id|>assistant<|end_header_id|>"
+        if assistant_keyword in llama_output:
+            llama_output = llama_output.split(assistant_keyword, 1)[1].strip()
+
+        return llama_output
+
+    def submit_prompt_to_llama(self, input_text: str) -> str:
         """
         Generate text using the Llama 3.2 3B model.
         """
-        # Combine the context and prompt for the model
-        input_text = f"Context:\n{context}\n\nQuestion: {prompt}\nAnswer:"
+        # Tokenize the input text
         inputs = self.tokenizer(
             input_text,                                     # The input text to tokenize
             return_tensors="pt",                            # Return PyTorch tensors (required for the model)
             truncation=True,                                # Enable truncation if the input exceeds the max_length
-            max_length=8000,                                # Set the maximum number of tokens for the input
+            max_length=32000,                               # Set the maximum number of tokens for the input
             truncation_strategy="longest_first"             # Truncate the longest part of the input if necessary
         ).to("cuda")                                        # Move the tokenized inputs to the GPU for faster processing
 
         # Generate text using the model.
-        # The model takes the tokenized input and produces a sequence of tokens as output.
         outputs = self.model.generate(
             inputs["input_ids"],                            # Token IDs of the input prompt
             attention_mask=inputs["attention_mask"],        # Attention mask to indicate which tokens are actual input
-            max_new_tokens=16000,                           # Maximum number of new tokens to generate (excluding the input tokens)
+            max_new_tokens=64000,                           # Maximum number of new tokens to generate (excluding the input tokens)
             pad_token_id=self.tokenizer.eos_token_id,       # Use the end-of-sequence (EOS) token as the padding token
             no_repeat_ngram_size=2,                         # Prevent the model from repeating 2-grams (pairs of words)
             num_beams=5,                                    # Use beam search with 5 beams to explore multiple candidate sequences
             early_stopping=True                             # Stop generation early if all beam candidates reach the EOS token
         )
 
-        # Decode the generated token IDs back into human-readable text.
-        # The `skip_special_tokens=True` argument removes special tokens like [EOS] from the output.
-        generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        # Decode the generated token IDs back into text.
+        return self.tokenizer.decode(outputs[0], skip_special_tokens=False)
 
-        answer_keyword = "Answer:"
+    def submit_prompt_with_context_to_llama(self, prompt: str, context: str) -> str:
+        prompt_for_llama = self.create_system_prompt_for_llama(prompt, context)
+        reply_from_llama = self.submit_prompt_to_llama(prompt_for_llama)
+        return self.format_output_from_llama(reply_from_llama)
 
-        # Remove the input prompt from the generated text (if present).
-        # This ensures that only the newly generated text is returned.
-        if generated_text.startswith(input_text):
-            generated_text = generated_text[len(input_text):].strip()
-        else:
-            if answer_keyword in generated_text:
-                generated_text = generated_text.split(answer_keyword, 1)[1]  # Get the part after "Answer:"
-
-        return generated_text
+# Define the TypedDict classes
+class SearchResult(TypedDict):
+    title: str
+    url: str
+    content: str
+    engine: str
+    score: NotRequired[float]
 
 
-def fetch_search_results(query, max_results=MAX_SEARCH_RESULTS):
+def fetch_search_results(query: str, max_results: int = MAX_SEARCH_RESULTS) -> List[SearchResult]:
     """
     Fetch search results from SearXNG.
     """
@@ -92,14 +137,12 @@ def fetch_search_results(query, max_results=MAX_SEARCH_RESULTS):
         }
         response = requests.get(f"{SEARXNG_INSTANCE}/search", params=params)
         response.raise_for_status()
-        results = response.json().get("results", [])
-        return results[:max_results]
+        return response.json().get("results", [])
     except Exception as e:
         logging.error(f"Error fetching search results: {e}")
         return []
 
-
-def extract_webpage_content(url):
+def extract_webpage_content(url: str) -> str:
     """
     Extract text content from a webpage.
     """
@@ -114,8 +157,7 @@ def extract_webpage_content(url):
         logging.error(f"Error extracting content from {url}: {e}")
         return ""
 
-
-def process_prompt(prompt):
+def process_prompt(prompt: str) -> str:
     """
     Process the prompt using SearXNG and Llama 3.2 3B.
     """
@@ -123,26 +165,12 @@ def process_prompt(prompt):
 
     # Step 1: Fetch search results from SearXNG
     search_results = fetch_search_results(prompt)
-    if not search_results:
-        return "No relevant search results found."
 
-    # # Step 2: Extract content from the top search results
-    # context = ""
-    # for result in search_results:
-    #     url = result.get("url")
-    #     if url:
-    #         content = extract_webpage_content(url)
-    #         if content:
-    #             context += f"Source: {url}\nContent: {content}\n\n"
-
-    relevant_info = [result.get("content", "") for result in search_results]
-    context = "\n".join(relevant_info)
+    # Step 2: Extract relevant information from the search results
+    context = llama_service.format_search_results_for_llama(search_results)
 
     # Step 3: Generate a response using Llama 3.2 3B
-    llama_service = LlamaService()
-    reply = llama_service.generate_text(prompt, context)
-
-    return reply
+    return llama_service.submit_prompt_with_context_to_llama(prompt, context)
 
 
 def setup_rabbitmq_connection():
@@ -214,6 +242,9 @@ def start_consumer():
         if connection and connection.is_open:
             connection.close()
             logging.info("RabbitMQ connection closed.")
+
+
+llama_service = LlamaService()
 
 
 if __name__ == "__main__":

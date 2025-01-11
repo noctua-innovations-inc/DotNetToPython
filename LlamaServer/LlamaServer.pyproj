@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>3c4ab4a9-cbea-4f1e-b38b-49dd2274ab75</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>rag_prompt_processor.py</StartupFile>
+    <StartupFile>test_rag_prompt_processor.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -27,6 +27,7 @@
     <Compile Include="llama_service_pb2_grpc.py" />
     <Compile Include="rag_prompt_processor.py" />
     <Compile Include="prompt_processor.py" />
+    <Compile Include="test_rag_prompt_processor.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="environment.yml" />
