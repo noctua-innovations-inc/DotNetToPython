@@ -53,7 +53,7 @@ class LlamaService:
             "<|begin_of_text|>\n"
             "<|start_header_id|>system<|end_header_id|>\n"
             "You are a helpful AI assistant. "
-            "Provide one Answer ONLY the following query based on the context provided below. "
+            "Provide one Answer ONLY based on the context provided below. "
             "Do not generate or answer any other questions. "
             "Do not make up or infer any information that is not directly stated in the context. "
             f"Provide a concise answer.  context: Today is {datetime.now().strftime('%A, %d %B %Y')}\n\n"
