@@ -24,11 +24,11 @@ engines:
   - name: bing
     disabled: false
   - name: twitter
-    disabled: false
+    disabled: true
   - name: youtube
-    disabled: false
+    disabled: true
   - name: reddit
-    disabled: false
+    disabled: true
 search:
   formats:
     - html

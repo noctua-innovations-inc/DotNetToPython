@@ -1,10 +1,16 @@
 import logging
+import os
+import sys
+
+# Add the project root directory to sys.path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(project_root)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # Import the process_prompt function from the main script
-from rag_prompt_processor import process_prompt  # Replace "main_script" with the actual filename of your main script
+from rag_prompt_processor import process_prompt
 
 def test_process_prompt(prompt):
     """

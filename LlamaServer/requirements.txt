@@ -1,6 +1,7 @@
-beautifulsoup4
+#beautifulsoup4
 grpcio
 grpcio-tools
+#lxml
 pika
 transformers
 torch

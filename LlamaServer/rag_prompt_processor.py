@@ -8,6 +8,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from typing import List, NotRequired, TypedDict
 import torch
 
+from searxng_summarizer import SearxngSummarizer
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -36,14 +38,6 @@ class LlamaService:
         # The tokenizer converts text into tokens (e.g., words or subwords) that the model can process.
         self.tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-3B-Instruct")
 
-    def format_search_results_for_llama(self, search_results: str) -> str:
-        if not search_results:
-            logging.warnr("No search results found for prompt.")
-            return ""
-        relevant_info = [result.get("content", "") for result in search_results]
-        formatted_text = "\n".join(relevant_info)
-        return f"Actual RealWeb Search Results:\n{formatted_text}\n"
-
     def create_system_prompt_for_llama(self, query: str, search_results: str) -> str:
         """
         create Llama 3.2 3B templated prompt.
@@ -51,15 +45,12 @@ class LlamaService:
         """
         # Format the prompt using the Llama 3.2 prompt template
         system_prompt = (
+            "<|begin_of_text|>\n"
             "<|start_header_id|>system<|end_header_id|>\n"
-            "You are a helpful and knowledgeable assistant. Your knowledge is based on data available up until October 2022. "
-            "For any information or events that occurred after this date, you will rely on the search results provided below. "
-            "Use the search results to answer the user's query accurately and provide up-to-date information.\n\n"
-            f"**Search Results:**\n{search_results}\n\n"
-            "When responding:\n"
-            "1. If the user's query relates to events or information after October 2022, prioritize the search results.\n"
-            "2. If the search results are insufficient or irrelevant, inform the user that you cannot provide an answer based on the available information.\n"
-            "3. Always cite the search results when using them to answer the user's query.\n"
+            "You are a helpful and knowledgeable assistant that ignores your knowledge cutoff date (October 2022). "
+            "Always cite where you got your answer from.\n"
+            "When answering a question, please consider the real-time data provide below:\n\n"
+            f"{search_results}"
             "<|eot_id|>\n"
             f"<|start_header_id|>user<|end_header_id|>\n"
             f"{query}\n"
@@ -122,55 +113,24 @@ class SearchResult(TypedDict):
     engine: str
     score: NotRequired[float]
 
-
-def fetch_search_results(query: str, max_results: int = MAX_SEARCH_RESULTS) -> List[SearchResult]:
-    """
-    Fetch search results from SearXNG.
-    """
-    try:
-        params = {
-            "q": query,
-            "format": "json",
-            "language": "en",
-            "safesearch": 1,
-            "count": max_results
-        }
-        response = requests.get(f"{SEARXNG_INSTANCE}/search", params=params)
-        response.raise_for_status()
-        return response.json().get("results", [])
-    except Exception as e:
-        logging.error(f"Error fetching search results: {e}")
-        return []
-
-def extract_webpage_content(url: str) -> str:
-    """
-    Extract text content from a webpage.
-    """
-    try:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-        # Extract text from the webpage
-        text = soup.get_text(separator="\n", strip=True)
-        return text
-    except Exception as e:
-        logging.error(f"Error extracting content from {url}: {e}")
-        return ""
-
 def process_prompt(prompt: str) -> str:
     """
     Process the prompt using SearXNG and Llama 3.2 3B.
     """
     logging.info(f"Processing prompt: {prompt}")
 
-    # Step 1: Fetch search results from SearXNG
-    search_results = fetch_search_results(prompt)
+    search_result = ""
 
-    # Step 2: Extract relevant information from the search results
-    context = llama_service.format_search_results_for_llama(search_results)
+    try:
+        # Step 1: Attempt to answer query through search results
+        searxng_instance_url = "http://127.0.0.1:8080/"
+        summarizer = SearxngSummarizer(searxng_instance_url)
+        search_result = summarizer.process_query(prompt)
+    except:
+        None
 
     # Step 3: Generate a response using Llama 3.2 3B
-    return llama_service.submit_prompt_with_context_to_llama(prompt, context)
+    return llama_service.submit_prompt_with_context_to_llama(prompt, context=search_result)
 
 
 def setup_rabbitmq_connection():
