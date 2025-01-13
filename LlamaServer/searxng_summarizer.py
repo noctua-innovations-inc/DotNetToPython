@@ -77,7 +77,7 @@ class SearxngSummarizer:
 
         return text
 
-    def summarize(self, query, input_text):
+    def summarize(self, input_text):
         # Define the custom directory for storing the model
         custom_model_dir = "Z:/Research/long-t5/cache"
 
@@ -85,7 +85,7 @@ class SearxngSummarizer:
         tokenizer = T5Tokenizer.from_pretrained("google/long-t5-tglobal-base", cache_dir=custom_model_dir)
         model = LongT5ForConditionalGeneration.from_pretrained("google/long-t5-tglobal-base", cache_dir=custom_model_dir)
 
-        prompt_text = f"question: {query}\n\ncontext: {input_text}"
+        prompt_text = f"summarize: {input_text}"
 
         # Preprocess the input text
         input_ids = tokenizer(
@@ -137,7 +137,7 @@ class SearxngSummarizer:
         except Exception as e:
             print(f"Error during search: {e}")
 
-        return self.summarize(query, summary)
+        return self.summarize(summary)
 
 
 

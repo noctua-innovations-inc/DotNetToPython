@@ -28,15 +28,15 @@ if __name__ == "__main__":
     # Interactive prompt loop
     while True:
         # Get user input
-        user_prompt = input("\nEnter your prompt (or type 'exit' to quit): ").strip()
+        user_query = input("\nEnter your prompt (or type 'exit' to quit): ").strip()
         
         # Exit condition
-        if user_prompt.lower() == "exit":
+        if user_query.lower() == "exit":
             logging.info("Exiting the test script. Goodbye!")
             break
         
         # Process the user's prompt
-        if user_prompt:  # Ensure the prompt is not empty
-            test_process_prompt(user_prompt)
+        if user_query:  # Ensure the prompt is not empty
+            test_process_prompt(user_query)
         else:
             logging.warning("Please enter a valid prompt.")

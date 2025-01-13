@@ -2,6 +2,7 @@ import pika
 import logging
 import sys
 import os
+import re
 import requests
 
 from datetime import datetime
@@ -41,7 +42,20 @@ class LlamaService:
         # The tokenizer converts text into tokens (e.g., words or subwords) that the model can process.
         self.tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-3B-Instruct")
 
-    def create_system_prompt_for_llama(self, query: str, search_results: str) -> str:
+    def create_prompt_for_llama(self, query: str) -> str:
+        system_prompt = (
+            "<|begin_of_text|>\n"
+            "<|start_header_id|>system<|end_header_id|>\n"
+            "You are a helpful AI assistant. Do not make up any information.  Provide a concise answer.\n\n"
+            "<|eot_id|>\n"
+            f"<|start_header_id|>user<|end_header_id|>\n"
+            f"{query}\n"
+            "<|eot_id|>\n"
+            "<|start_header_id|>assistant<|end_header_id|>"
+        )
+        return system_prompt
+
+    def create_prompt_restricted_to_context_info_for_llama(self, query: str, context_information: str) -> str:
         """
         create Llama 3.2 3B templated prompt.
         See also...
@@ -57,14 +71,26 @@ class LlamaService:
             "Do not generate or answer any other questions. "
             "Do not make up or infer any information that is not directly stated in the context. "
             f"Provide a concise answer.  context: Today is {datetime.now().strftime('%A, %d %B %Y')}\n\n"
-            f"{search_results}"
+            f"{context_information}"
             "<|eot_id|>\n"
             f"<|start_header_id|>user<|end_header_id|>\n"
             f"{query}\n"
             "<|eot_id|>\n"
             "<|start_header_id|>assistant<|end_header_id|>"
         )
+        return system_prompt
 
+    def create_response_test_prompt_for_llama(self, query: str, text_to_check: str):
+        system_prompt = (
+            "<|begin_of_text|>\n"
+            "<|start_header_id|>system<|end_header_id|>\n"
+            "Determine if the following text contains an answer to the question. Respond with \"Yes\" or \"No\".\n"
+            "<|start_header_id|>user<|end_header_id|>\n"
+            f"Question: {query}\n"
+            f"Text: {text_to_check}\n"
+            "<|start_header_id|>assistant<|end_header_id|>\n"
+            "Answer: <|end_of_text|>\n"
+        )
         return system_prompt
 
     def format_output_from_llama(self, llama_output: str) -> str:
@@ -105,39 +131,43 @@ class LlamaService:
         )
 
         # Decode the generated token IDs back into text.
-        return self.tokenizer.decode(outputs[0], skip_special_tokens=False)
-
-    def submit_prompt_with_context_to_llama(self, prompt: str, context: str) -> str:
-        prompt_for_llama = self.create_system_prompt_for_llama(prompt, context)
-        reply_from_llama = self.submit_prompt_to_llama(prompt_for_llama)
+        reply_from_llama =  self.tokenizer.decode(outputs[0], skip_special_tokens=False)
         return self.format_output_from_llama(reply_from_llama)
 
-# Define the TypedDict classes
-class SearchResult(TypedDict):
-    title: str
-    url: str
-    content: str
-    engine: str
-    score: NotRequired[float]
+    def submit_query_without_context_to_llama(self, query: str) -> str:
+        prompt_for_llama = self.create_prompt_for_llama(query)
+        return self.submit_prompt_to_llama(prompt_for_llama)
 
-def process_prompt(prompt: str) -> str:
-    """
-    Process the prompt using SearXNG and Llama 3.2 3B.
-    """
-    logging.info(f"Processing prompt: {prompt}")
+    def submit_query_with_context_to_llama(self, query: str, context: str) -> str:
+        prompt_for_llama = self.create_prompt_restricted_to_context_info_for_llama(query, context)
+        return self.submit_prompt_to_llama(prompt_for_llama)
+
+    def was_query_likely_answered(self, query: str, reply: str):
+        test_reply_prompt = self.create_response_test_prompt_for_llama(query, reply)
+        result = self.submit_prompt_to_llama(test_reply_prompt)
+        return re.search(r'\byes\b', result, re.IGNORECASE)
+
+
+def process_prompt(query: str) -> str:
+    logging.info(f"Processing query: {query}")
 
     search_result = ""
 
     try:
-        # Step 1: Attempt to answer query through search results
-        searxng_instance_url = "http://127.0.0.1:8080/"
-        summarizer = SearxngSummarizer(searxng_instance_url)
-        search_result = summarizer.process_query(prompt)
+        llama_reply = llama_service.submit_query_without_context_to_llama(query)
+
+        if llama_service.was_query_likely_answered(query, llama_reply):
+            return llama_reply
+        else:
+            searxng_instance_url = "http://127.0.0.1:8080/"
+            summarizer = SearxngSummarizer(searxng_instance_url)
+            search_result = summarizer.process_query(query)
+
+            return llama_service.submit_query_with_context_to_llama(query, context=search_result)
     except:
         None
 
-    # Step 3: Generate a response using Llama 3.2 3B
-    return llama_service.submit_prompt_with_context_to_llama(prompt, context=search_result)
+    return ""
 
 
 def setup_rabbitmq_connection():
