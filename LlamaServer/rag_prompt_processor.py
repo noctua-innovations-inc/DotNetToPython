@@ -3,6 +3,9 @@ import logging
 import sys
 import os
 import requests
+
+from datetime import datetime
+
 from bs4 import BeautifulSoup
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from typing import List, NotRequired, TypedDict
@@ -41,15 +44,19 @@ class LlamaService:
     def create_system_prompt_for_llama(self, query: str, search_results: str) -> str:
         """
         create Llama 3.2 3B templated prompt.
-        See also... https://www.llama.com/docs/how-to-guides/prompting/
+        See also...
+            https://www.llama.com/docs/how-to-guides/prompting/
+            https://github.com/huggingface/huggingface-llama-recipes/blob/main/llama_rag/llama_rag_pipeline.ipynb
         """
         # Format the prompt using the Llama 3.2 prompt template
         system_prompt = (
             "<|begin_of_text|>\n"
             "<|start_header_id|>system<|end_header_id|>\n"
-            "You are a helpful and knowledgeable assistant that ignores your knowledge cutoff date (October 2022). "
-            "Always cite where you got your answer from.\n"
-            "When answering a question, please consider the real-time data provide below:\n\n"
+            "You are a helpful AI assistant. "
+            "Provide one Answer ONLY the following query based on the context provided below. "
+            "Do not generate or answer any other questions. "
+            "Do not make up or infer any information that is not directly stated in the context. "
+            f"Provide a concise answer.  context: Today is {datetime.now().strftime('%A, %d %B %Y')}\n\n"
             f"{search_results}"
             "<|eot_id|>\n"
             f"<|start_header_id|>user<|end_header_id|>\n"
