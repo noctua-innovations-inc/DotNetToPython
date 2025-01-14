@@ -1,17 +1,61 @@
-import pika
-import logging
-import sys
-import os
-import re
-import requests
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+rag_prompt_processor.py
+
+RAG (Retrieval-Augmented Generation) Prompt Processor
+
+This script processes user queries by combining the capabilities of a large language model (LLM)
+and a search-based summarizer (SearXNG) to generate accurate and contextually relevant responses.
+It listens for incoming messages from a RabbitMQ queue, processes the queries, and sends back
+responses using a reply-to queue.
+
+Key Features:
+- Uses the LlamaService to generate responses from a large language model.
+- Integrates with SearXNG to retrieve and summarize relevant information from the web.
+- Communicates with a RabbitMQ message broker for asynchronous query processing.
+
+Dependencies:
+- pika: For RabbitMQ communication.
+- llama_service: Custom service for interacting with the Llama model.
+- searxng_summarizer: Custom module for summarizing search results from SearXNG.
+
+Configuration:
+- RabbitMQ connection details are configured via environment variables or default values.
+- The SearXNG instance URL is hardcoded but can be modified as needed.
+
+Usage:
+1. Ensure RabbitMQ is running and accessible.
+2. Set up the LlamaService and SearXNG summarizer.
+3. Run this script to start the consumer:
+   python rag_prompt_processor.py
+4. Send queries to the RabbitMQ queue frontend_to_backend with a reply_to property.
+
+Example:
+
+ - A query is sent to the queue.
+ - The script processes the query using the Llama model and/or SearXNG summarizer.
+ - The response is sent back to the reply_to queue.
+
+Author: Christopher Zielinski
+Date: 2025-01-13
+Version: 1.0
+
+License:
+    MIT License
+
+Disclaimer:
+    This script is provided "as-is" without any warranties. Use at your own risk.
+
+"""
 
 from datetime import datetime
-
-from bs4 import BeautifulSoup
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from typing import List, NotRequired, TypedDict
-import torch
-
+import os
+import logging
+import sys
+import pika
+from llama_service import LlamaService
 from searxng_summarizer import SearxngSummarizer
 
 # Configure logging
@@ -23,156 +67,53 @@ RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", 5672))               # RabbitMQ s
 RABBITMQ_USER = os.getenv("RABBITMQ_USER", "dev_user")              # RabbitMQ username
 RABBITMQ_PASSWORD = os.getenv("RABBITMQ_PASSWORD", "dev_password")  # RabbitMQ password
 FRONTEND_TO_BACKEND_QUEUE = "frontend_to_backend"
-SEARXNG_INSTANCE = "http://127.0.0.1:8080/"                         # Replace with your SearXNG instance URL
-MAX_SEARCH_RESULTS = 16                                             # Maximum number of search results to process
 
-logging.info(f"RabbitMQ Host: {RABBITMQ_HOST}")
-
-class LlamaService:
-    def __init__(self):
-        # Load the pre-trained Llama 3.2 3B Instruct model using Hugging Face's AutoModelForCausalLM.
-        # This model is designed for causal language modeling tasks (e.g., text generation).
-        self.model = AutoModelForCausalLM.from_pretrained(
-            "meta-llama/Llama-3.2-3B-Instruct",             # Model identifier on Hugging Face Hub
-            device_map="auto",                              # Automatically distribute the model across available GPUs
-            torch_dtype=torch.float16                       # Use half-precision (16-bit floating point) for better performance
-        )
-
-        # Load the tokenizer associated with the Llama 3.2 3B Instruct model.
-        # The tokenizer converts text into tokens (e.g., words or subwords) that the model can process.
-        self.tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-3B-Instruct")
-
-    def create_prompt_for_llama(self, query: str) -> str:
-        system_prompt = (
-            "<|begin_of_text|>\n"
-            "<|start_header_id|>system<|end_header_id|>\n"
-            "You are a helpful AI assistant. Do not make up any information.  Provide a concise answer.\n\n"
-            "<|eot_id|>\n"
-            f"<|start_header_id|>user<|end_header_id|>\n"
-            f"{query}\n"
-            "<|eot_id|>\n"
-            "<|start_header_id|>assistant<|end_header_id|>"
-        )
-        return system_prompt
-
-    def create_prompt_restricted_to_context_info_for_llama(self, query: str, context_information: str) -> str:
-        """
-        create Llama 3.2 3B templated prompt.
-        See also...
-            https://www.llama.com/docs/how-to-guides/prompting/
-            https://github.com/huggingface/huggingface-llama-recipes/blob/main/llama_rag/llama_rag_pipeline.ipynb
-        """
-        # Format the prompt using the Llama 3.2 prompt template
-        system_prompt = (
-            "<|begin_of_text|>\n"
-            "<|start_header_id|>system<|end_header_id|>\n"
-            "You are a helpful AI assistant. "
-            "Provide one Answer ONLY based on the context provided below. "
-            "Do not generate or answer any other questions. "
-            "Do not make up or infer any information that is not directly stated in the context. "
-            f"Provide a concise answer.  context: Today is {datetime.now().strftime('%A, %d %B %Y')}\n\n"
-            f"{context_information}"
-            "<|eot_id|>\n"
-            f"<|start_header_id|>user<|end_header_id|>\n"
-            f"{query}\n"
-            "<|eot_id|>\n"
-            "<|start_header_id|>assistant<|end_header_id|>"
-        )
-        return system_prompt
-
-    def create_response_test_prompt_for_llama(self, query: str, text_to_check: str):
-        system_prompt = (
-            "<|begin_of_text|>\n"
-            "<|start_header_id|>system<|end_header_id|>\n"
-            "Determine if the following text contains an answer to the question. Respond with \"Yes\" or \"No\".\n"
-            "<|start_header_id|>user<|end_header_id|>\n"
-            f"Question: {query}\n"
-            f"Text: {text_to_check}\n"
-            "<|start_header_id|>assistant<|end_header_id|>\n"
-            "Answer: <|end_of_text|>\n"
-        )
-        return system_prompt
-
-    def format_output_from_llama(self, llama_output: str) -> str:
-        # Remove the final `<|end_of_text|>` token if present
-        eot_token = "<|end_of_text|>"
-        if llama_output.endswith(eot_token):
-            llama_output = llama_output[:-len(eot_token)].strip()
-
-        # Extract the assistant's response from the generated text
-        assistant_keyword = "<|start_header_id|>assistant<|end_header_id|>"
-        if assistant_keyword in llama_output:
-            llama_output = llama_output.split(assistant_keyword, 1)[1].strip()
-
-        return llama_output
-
-    def submit_prompt_to_llama(self, input_text: str) -> str:
-        """
-        Generate text using the Llama 3.2 3B model.
-        """
-        # Tokenize the input text
-        inputs = self.tokenizer(
-            input_text,                                     # The input text to tokenize
-            return_tensors="pt",                            # Return PyTorch tensors (required for the model)
-            truncation=True,                                # Enable truncation if the input exceeds the max_length
-            max_length=32000,                               # Set the maximum number of tokens for the input
-            truncation_strategy="longest_first"             # Truncate the longest part of the input if necessary
-        ).to("cuda")                                        # Move the tokenized inputs to the GPU for faster processing
-
-        # Generate text using the model.
-        outputs = self.model.generate(
-            inputs["input_ids"],                            # Token IDs of the input prompt
-            attention_mask=inputs["attention_mask"],        # Attention mask to indicate which tokens are actual input
-            max_new_tokens=64000,                           # Maximum number of new tokens to generate (excluding the input tokens)
-            pad_token_id=self.tokenizer.eos_token_id,       # Use the end-of-sequence (EOS) token as the padding token
-            no_repeat_ngram_size=2,                         # Prevent the model from repeating 2-grams (pairs of words)
-            num_beams=5,                                    # Use beam search with 5 beams to explore multiple candidate sequences
-            early_stopping=True                             # Stop generation early if all beam candidates reach the EOS token
-        )
-
-        # Decode the generated token IDs back into text.
-        reply_from_llama =  self.tokenizer.decode(outputs[0], skip_special_tokens=False)
-        return self.format_output_from_llama(reply_from_llama)
-
-    def submit_query_without_context_to_llama(self, query: str) -> str:
-        prompt_for_llama = self.create_prompt_for_llama(query)
-        return self.submit_prompt_to_llama(prompt_for_llama)
-
-    def submit_query_with_context_to_llama(self, query: str, context: str) -> str:
-        prompt_for_llama = self.create_prompt_restricted_to_context_info_for_llama(query, context)
-        return self.submit_prompt_to_llama(prompt_for_llama)
-
-    def was_query_likely_answered(self, query: str, reply: str):
-        test_reply_prompt = self.create_response_test_prompt_for_llama(query, reply)
-        result = self.submit_prompt_to_llama(test_reply_prompt)
-        return re.search(r'\byes\b', result, re.IGNORECASE)
+# Initialize LlamaService
+llama_service = LlamaService()
 
 
 def process_prompt(query: str) -> str:
+    """
+    Process a user query by generating a response using the Llama model and/or SearXNG summarizer.
+
+    Args:
+        query (str): The user's query.
+
+    Returns:
+        str: The generated response.
+    """
     logging.info(f"Processing query: {query}")
 
-    search_result = ""
-
     try:
+        # First, attempt to answer the query without additional context
         llama_reply = llama_service.submit_query_without_context_to_llama(query)
 
+        # Check if the query was likely answered
         if llama_service.was_query_likely_answered(query, llama_reply):
             return llama_reply
         else:
+            # If not, use SearXNG to gather additional context
             searxng_instance_url = "http://127.0.0.1:8080/"
             summarizer = SearxngSummarizer(searxng_instance_url)
-            search_result = summarizer.process_query(query)
+            search_result = (
+                f"For reference, today is {datetime.now().strftime('%A, %d %B %Y')}, "
+                "but the following information could be older...\n\n"
+                f"{summarizer.process_query(query)}"
+            )
 
+            # Submit the query with the gathered context
             return llama_service.submit_query_with_context_to_llama(query, context=search_result)
-    except:
-        None
-
-    return ""
+    except Exception as e:
+        logging.error(f"Error processing query: {e}")
+        return ""
 
 
 def setup_rabbitmq_connection():
     """
     Set up and return a RabbitMQ connection and channel.
+
+    Returns:
+        tuple: A tuple containing the RabbitMQ connection and channel.
     """
     try:
         credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASSWORD)
@@ -194,7 +135,13 @@ def setup_rabbitmq_connection():
 
 def callback(ch, method, properties, body):
     """
-    Callback function to process incoming messages.
+    Callback function to process incoming messages from RabbitMQ.
+
+    Args:
+        ch: The RabbitMQ channel.
+        method: The method frame.
+        properties: The message properties.
+        body: The message body.
     """
     try:
         prompt = body.decode("utf-8")
@@ -208,8 +155,8 @@ def callback(ch, method, properties, body):
                 body=reply.encode("utf-8"),
                 properties=pika.BasicProperties(
                     correlation_id=properties.correlation_id,   # Include the correlation ID
-                    delivery_mode=1                             # Make messages transient
-                )
+                    delivery_mode=1,                            # Make messages transient
+                ),
             )
             logging.info(f"Processed and replied to prompt: {prompt}")
         else:
@@ -220,7 +167,7 @@ def callback(ch, method, properties, body):
 
 def start_consumer():
     """
-    Start the RabbitMQ consumer.
+    Start the RabbitMQ consumer to listen for incoming messages.
     """
     connection, channel = setup_rabbitmq_connection()
     try:
@@ -239,9 +186,6 @@ def start_consumer():
         if connection and connection.is_open:
             connection.close()
             logging.info("RabbitMQ connection closed.")
-
-
-llama_service = LlamaService()
 
 
 if __name__ == "__main__":
