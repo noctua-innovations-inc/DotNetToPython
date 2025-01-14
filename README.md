@@ -50,15 +50,16 @@ The objective is to use AI to write as much of the solution code as possible, de
 Follow these steps to set up and run the software system:
 
 1. **Ensure Docker Desktop for Windows** is installed and running.
-2. **Open the solution file** (`DotNetToPython.sln`) in **Visual Studio 2022 (64-bit) v17.12.3** or higher.
-3. **Set `LlamaAspireSolution.AppHost`** as the Startup Project.
-4. **Run the solution** in Visual Studio.
-5. After the AppHost successfully launches in your web browser, click on the first endpoint hyperlink for the **`blazor-frontend`** project.
-6. **Open another instance of Visual Studio** and ensure that `prompt_processor.py` is set as the Startup file within the **LlamaServer** Python project.
-7. **Run the Python solution** in Visual Studio and wait for the logging message:  
+2. **Deploy and run the SearXNG** in Docker Desktop.
+3. **Open the solution file** (`DotNetToPython.sln`) in **Visual Studio 2022 (64-bit) v17.12.3** or higher.
+4. **Set `LlamaAspireSolution.AppHost`** as the Startup Project.
+5. **Run the solution** in Visual Studio.
+6. After the AppHost successfully launches in your web browser, click on the first endpoint hyperlink for the **`blazor-frontend`** project.
+7. **Open another instance of Visual Studio** and ensure that `prompt_processor.py` is set as the Startup file within the **LlamaServer** Python project.
+8. **Run the Python solution** in Visual Studio and wait for the logging message:  
    `"Waiting for messages. To exit, press CTRL+C"` to appear in the Python console.
-8. **Type a prompt** into the Blazor frontend webpage (e.g., “Is life but a dream?”) and click the **“Submit Prompt”** button.
-9. **Wait patiently** for the Llama 3.2 3B Instruct model to process the prompt and for the Blazor frontend to display the response.
+9. **Type a prompt** into the Blazor frontend webpage (e.g., “Is life but a dream?”) and click the **“Submit Prompt”** button.
+10. **Wait patiently** for the Llama 3.2 3B Instruct model to process the prompt and for the Blazor frontend to display the response.
 
 **Note:** This project is strictly intended for research purposes and is not suitable for production use.
 
@@ -95,13 +96,16 @@ Here are some screenshots of the project in action:
 *Aspire Client Startup*
 ![Screenshot 1](aspire_client_startup.png)  
 
+*Docker.Desktop*
+![Screenshot 2](docker_desktop.png)  
+
 *Aspire Client Orchestrator*
-![Screenshot 2](aspire_client_orchestrator.png)  
+![Screenshot 3](aspire_client_orchestrator.png)  
 
 *Python Backend Server*
-![Screenshot 3](python_backend.png)  
+![Screenshot 4](python_backend.png)  
 
 *Aspire Blazor Server Client Frontend*
-![Screenshot 4](aspire_client_frontend.png)  
+![Screenshot 5](aspire_client_frontend.png)  
 
 ---
