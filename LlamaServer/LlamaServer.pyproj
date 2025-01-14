@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>3c4ab4a9-cbea-4f1e-b38b-49dd2274ab75</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>prompt_processor.py</StartupFile>
+    <StartupFile>rag_prompt_processor.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -12,6 +12,9 @@
     <Name>LlamaServer</Name>
     <RootNamespace>LlamaServer</RootNamespace>
     <InterpreterId>CondaEnv|CondaEnv|llama_3.2_3b_instruct_env</InterpreterId>
+    <TestFramework>Pytest</TestFramework>
+    <SuppressConfigureTestFrameworkPrompt>true</SuppressConfigureTestFrameworkPrompt>
+    <SuppressEnvironmentCreationPrompt>True</SuppressEnvironmentCreationPrompt>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -23,9 +26,14 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="LlamaServer.py" />
+    <Compile Include="llama_service.py" />
     <Compile Include="llama_service_pb2.py" />
     <Compile Include="llama_service_pb2_grpc.py" />
-    <Compile Include="prompt_processor.py" />
+    <Compile Include="proof_of_concept\text_summarization.py" />
+    <Compile Include="rag_prompt_processor.py" />
+    <Compile Include="searxng_summarizer.py" />
+    <Compile Include="proof_of_concept\rag_prompt_processor_console.py" />
+    <Compile Include="test_searxng_summarizer.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="environment.yml" />
@@ -34,6 +42,9 @@
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="CondaEnv|CondaEnv|llama_3.2_3b_instruct_env" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="proof_of_concept\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

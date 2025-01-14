@@ -1,5 +1,6 @@
 ﻿using BlazorServerFrontend.Infrastructure.Abstractions;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using RabbitMQ.Client.Events;
 using System.ComponentModel;
 using System.Text;
@@ -9,6 +10,9 @@ namespace BlazorServerFrontend.Pages;
 public partial class Index
 {
     #region --[ Injection ]--
+
+    [Inject]
+    public required IJSRuntime JSRuntime { get; set; }
 
     /*
      *GHOSTED CODE: This gRPC implementation is no longer in use but is kept for reference.
@@ -104,7 +108,10 @@ public partial class Index
         if (string.IsNullOrWhiteSpace(Prompt) || IsProcessing)
             return;
 
+        GeneratedText = string.Empty;
         IsProcessing = true;
+
+        await JSRuntime.InvokeVoidAsync("showModal", "loadingModal");
         /*
          *GHOSTED CODE: This gRPC implementation is no longer in use but is kept for reference.
          * It was replaced with a message queue pattern due to timeout issues and the need for
@@ -126,7 +133,7 @@ public partial class Index
         await PromptProcessor.SendRequestAsync(Prompt);
     }
 
-    private Task DataReceivedHandler(object channel, BasicDeliverEventArgs @event)
+    private async Task DataReceivedHandler(object channel, BasicDeliverEventArgs @event)
     {
         var body = @event.Body.ToArray();
         var message = Encoding.UTF8.GetString(body);
@@ -134,7 +141,7 @@ public partial class Index
         GeneratedText = message;
         IsProcessing = false;
 
-        return Task.CompletedTask;
+        await JSRuntime.InvokeVoidAsync("hideModal", "loadingModal");
     }
 
     #endregion

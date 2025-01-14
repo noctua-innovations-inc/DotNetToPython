@@ -1,7 +1,3 @@
-﻿.cursor-wait {
-    cursor: wait;
-}
-
-.cursor-default {
-    cursor: default;
+﻿.container {
+    padding-top:20px
 }
